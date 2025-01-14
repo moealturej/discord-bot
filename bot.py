@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-from discord import app_commands
 import os
 import datetime
 import asyncio
@@ -21,9 +20,6 @@ if not token:
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents)
-
-# Slash Command Tree
-bot.tree.sync()  # Automatically sync commands
 
 # Store bot uptime
 start_time = datetime.datetime.now()
@@ -76,44 +72,62 @@ async def on_command_error(ctx, error):
     else:
         await ctx.send(f"An error occurred: {error}")
 
-# Slash commands (app_commands)
-@bot.tree.command(name="ping")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("Pong!")
+# Replace slash commands with .commands
 
-@bot.tree.command(name="uptime")
-async def uptime(interaction: discord.Interaction):
+@bot.command(name="ping")
+async def ping(ctx):
+    await ctx.send("Pong!")
+
+@bot.command(name="uptime")
+async def uptime(ctx):
     delta = datetime.datetime.now() - start_time
-    await interaction.response.send_message(f"Uptime: {delta}")
+    await ctx.send(f"Uptime: {delta}")
 
-@bot.tree.command(name="purge")
-@app_commands.describe(amount="Number of messages to delete")
-async def purge(interaction: discord.Interaction, amount: int):
+@bot.command(name="purge")
+async def purge(ctx, amount: int):
     """Delete a specific number of messages (Admin only)"""
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("You don't have the required permissions to purge messages.")
+    if not ctx.author.guild_permissions.manage_messages:
+        await ctx.send("You don't have the required permissions to purge messages.")
         return
     if amount <= 0:
-        await interaction.response.send_message("You must specify a positive number of messages to delete.")
+        await ctx.send("You must specify a positive number of messages to delete.")
         return
-    deleted = await interaction.channel.purge(limit=amount)
-    await interaction.response.send_message(f"Deleted {len(deleted)} messages.", delete_after=5)
+    deleted = await ctx.channel.purge(limit=amount)
+    await ctx.send(f"Deleted {len(deleted)} messages.", delete_after=5)
 
-@bot.tree.command(name="verify")
-async def verify(interaction: discord.Interaction):
+@bot.command(name="verify")
+async def verify(ctx):
     """Send a verification code to the user"""
     verification_code = str(random.randint(1000, 9999))
-    await interaction.response.send_message(f"Your verification code is: {verification_code}")
-    await interaction.response.send_message("Please reply with the code to verify your identity.")
+    await ctx.send(f"Your verification code is: {verification_code}")
+    await ctx.send("Please reply with the code to verify your identity.")
     
     def check(m):
-        return m.content == verification_code and m.author == interaction.user
+        return m.content == verification_code and m.author == ctx.author
 
     try:
         msg = await bot.wait_for('message', check=check, timeout=60.0)
-        await interaction.response.send_message("You have been verified!")
+        await ctx.send("You have been verified!")
     except asyncio.TimeoutError:
-        await interaction.response.send_message("Verification timed out.")
+        await ctx.send("Verification timed out.")
+
+# Help Command with beautiful embed
+@bot.command(name="help")
+async def help_command(ctx):
+    embed = discord.Embed(
+        title="Bot Commands",
+        description="Here are the available commands for this bot:",
+        color=discord.Color.purple()
+    )
+
+    embed.add_field(name=".ping", value="Responds with 'Pong!'", inline=False)
+    embed.add_field(name=".uptime", value="Displays the bot's uptime.", inline=False)
+    embed.add_field(name=".purge", value="Deletes a specified number of messages.", inline=False)
+    embed.add_field(name=".verify", value="Sends a verification code to verify your identity.", inline=False)
+
+    embed.set_footer(text="Use .help to get the list of commands anytime!")
+    embed.set_thumbnail(url="https://i.postimg.cc/G2wZHDrz/standard11.gif")  # Your emblem here
+    await ctx.send(embed=embed)
 
 # To throttle updates to presence
 @tasks.loop(minutes=5)  # Update presence every 5 minutes
@@ -133,7 +147,6 @@ async def on_ready():
     
     # Wait for a brief moment before attempting to change the avatar to avoid rate-limiting
     await asyncio.sleep(5)  # Adjust the delay if needed
-    await bot.tree.sync()
     
     try:
         # Set avatar from image URL
@@ -152,7 +165,7 @@ async def on_ready():
         print(f"Error updating username: {e}")
     
     # Set presence
-    await bot.change_presence(activity=discord.Game(name=f"Serving {len(bot.guilds)} servers"))
+    await bot.change_presence(activity=discord.Game(name=f"Use .help for commands"))
     
     # Emit updates to frontend after status change
     socketio.emit('status_update', {
