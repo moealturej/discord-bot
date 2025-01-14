@@ -72,6 +72,34 @@ async def uptime(ctx):
     delta = datetime.datetime.now() - start_time
     await ctx.send(f"Uptime: {delta}")
 
+# Purge command (Admin only)
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def purge(ctx, amount: int):
+    """Delete a specific number of messages (Admin only)"""
+    if amount <= 0:
+        await ctx.send("You must specify a positive number of messages to delete.")
+        return
+    deleted = await ctx.channel.purge(limit=amount)
+    await ctx.send(f"Deleted {len(deleted)} messages.", delete_after=5)
+
+# Verification command (Simple verification)
+@bot.command()
+async def verify(ctx):
+    """Send a verification code to the user"""
+    verification_code = str(random.randint(1000, 9999))
+    await ctx.send(f"Your verification code is: {verification_code}")
+    await ctx.send("Please reply with the code to verify your identity.")
+    
+    def check(m):
+        return m.content == verification_code and m.author == ctx.author
+
+    try:
+        msg = await bot.wait_for('message', check=check, timeout=60.0)
+        await ctx.send("You have been verified!")
+    except asyncio.TimeoutError:
+        await ctx.send("Verification timed out.")
+
 # To throttle updates to presence
 @tasks.loop(minutes=5)  # Update presence every 5 minutes
 async def update_presence():
@@ -110,7 +138,7 @@ async def on_ready():
     # Set presence
     await bot.change_presence(activity=discord.Game(name=f"Serving {len(bot.guilds)} servers"))
     
-    # Emit updates to the frontend after status change
+    # Emit updates to frontend after status change
     socketio.emit('status_update', {
         'bot_status': get_bot_status(),
         'uptime': get_uptime(),
