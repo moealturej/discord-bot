@@ -1,0 +1,8 @@
+body {
+    background-color: #1a202c; /* Dark gray */
+    color: #ffffff; /* White */
+}
+
+button:hover {
+    opacity: 0.9;
+}
