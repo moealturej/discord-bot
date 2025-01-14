@@ -112,8 +112,8 @@ async def verify(ctx):
         await ctx.send("Verification timed out.")
 
 # Override the default help command
-@bot.command(name="help", aliases=["commands"])
-async def help_command(ctx):
+@bot.help_command.command(name="help")
+async def custom_help(ctx):
     embed = discord.Embed(
         title="Bot Commands",
         description="Here are the available commands for this bot:",
