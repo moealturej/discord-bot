@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import os
 import datetime
 import asyncio
@@ -10,7 +11,7 @@ import time
 import random
 from dotenv import load_dotenv
 
-load_dotenv()  # This loads the .env file
+load_dotenv()  # Load the environment file
 token = os.getenv("DISCORD_TOKEN")
 
 if not token:
@@ -19,7 +20,10 @@ if not token:
 # Set up intents for the bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Slash Command Tree
+bot.tree.sync()  # Automatically sync commands
 
 # Store bot uptime
 start_time = datetime.datetime.now()
@@ -62,52 +66,63 @@ def on_connect():
         'server_count': get_server_count()
     })
 
-# Basic commands for the Discord bot
-@bot.command()
-async def ping(ctx):
-    await ctx.send("Pong!")
+# Error Handling
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have the required permissions to run this command.")
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not found. Please try again!")
+    else:
+        await ctx.send(f"An error occurred: {error}")
 
-@bot.command()
-async def uptime(ctx):
+# Slash commands (app_commands)
+@bot.tree.command(name="ping")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!")
+
+@bot.tree.command(name="uptime")
+async def uptime(interaction: discord.Interaction):
     delta = datetime.datetime.now() - start_time
-    await ctx.send(f"Uptime: {delta}")
+    await interaction.response.send_message(f"Uptime: {delta}")
 
-# Purge command (Admin only)
-@bot.command()
-@commands.has_permissions(manage_messages=True)
-async def purge(ctx, amount: int):
+@bot.tree.command(name="purge")
+@app_commands.describe(amount="Number of messages to delete")
+async def purge(interaction: discord.Interaction, amount: int):
     """Delete a specific number of messages (Admin only)"""
-    if amount <= 0:
-        await ctx.send("You must specify a positive number of messages to delete.")
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message("You don't have the required permissions to purge messages.")
         return
-    deleted = await ctx.channel.purge(limit=amount)
-    await ctx.send(f"Deleted {len(deleted)} messages.", delete_after=5)
+    if amount <= 0:
+        await interaction.response.send_message("You must specify a positive number of messages to delete.")
+        return
+    deleted = await interaction.channel.purge(limit=amount)
+    await interaction.response.send_message(f"Deleted {len(deleted)} messages.", delete_after=5)
 
-# Verification command (Simple verification)
-@bot.command()
-async def verify(ctx):
+@bot.tree.command(name="verify")
+async def verify(interaction: discord.Interaction):
     """Send a verification code to the user"""
     verification_code = str(random.randint(1000, 9999))
-    await ctx.send(f"Your verification code is: {verification_code}")
-    await ctx.send("Please reply with the code to verify your identity.")
+    await interaction.response.send_message(f"Your verification code is: {verification_code}")
+    await interaction.response.send_message("Please reply with the code to verify your identity.")
     
     def check(m):
-        return m.content == verification_code and m.author == ctx.author
+        return m.content == verification_code and m.author == interaction.user
 
     try:
         msg = await bot.wait_for('message', check=check, timeout=60.0)
-        await ctx.send("You have been verified!")
+        await interaction.response.send_message("You have been verified!")
     except asyncio.TimeoutError:
-        await ctx.send("Verification timed out.")
+        await interaction.response.send_message("Verification timed out.")
 
 # To throttle updates to presence
 @tasks.loop(minutes=5)  # Update presence every 5 minutes
 async def update_presence():
     status = random.choice([ 
-        f"Serving {len(bot.guilds)} servers",
-        "🎮 Playing games",
-        "Helping {len(bot.users)} users",
-        "Learning new tricks"
+        f"🔥 Managing {len(bot.guilds)} legendary guilds",
+        "🎮 Leveling up the gaming experience",
+        f"💥 Empowering {len(bot.users)} epic players",
+        "🚀 Unlocking new secrets and abilities"
     ])
     await bot.change_presence(activity=discord.Game(name=status))
 
