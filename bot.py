@@ -20,7 +20,7 @@ if not token:
 # Set up intents for the bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="/", intents=intents)
+bot = commands.Bot(command_prefix=".", intents=intents)
 
 # Slash Command Tree
 bot.tree.sync()  # Automatically sync commands
