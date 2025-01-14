@@ -30,7 +30,7 @@ start_time = datetime.datetime.now()
 
 # Flask app for the dashboard
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')
 
 # Cache to hold the server count and update it periodically
 server_count_cache = {'count': 0, 'last_updated': time.time()}
