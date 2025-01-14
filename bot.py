@@ -111,8 +111,8 @@ async def verify(ctx):
     except asyncio.TimeoutError:
         await ctx.send("Verification timed out.")
 
-# Help Command with beautiful embed
-@bot.command(name="help")
+# Override the default help command
+@bot.command(name="help", aliases=["commands"])
 async def help_command(ctx):
     embed = discord.Embed(
         title="Bot Commands",
