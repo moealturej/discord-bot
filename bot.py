@@ -112,7 +112,7 @@ async def verify(ctx):
         await ctx.send("Verification timed out.")
 
 # Override the default help command
-@bot.help_command.command(name="help")
+@bot.help_command.command(name="commands")
 async def custom_help(ctx):
     embed = discord.Embed(
         title="Bot Commands",
@@ -165,7 +165,7 @@ async def on_ready():
         print(f"Error updating username: {e}")
     
     # Set presence
-    await bot.change_presence(activity=discord.Game(name=f"Use .help for commands"))
+    await bot.change_presence(activity=discord.Game(name=f"Use /commands for help"))
     
     # Emit updates to frontend after status change
     socketio.emit('status_update', {
