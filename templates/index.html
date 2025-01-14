@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discord Bot Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
     <script>
         async function fetchBotStatus() {
             const response = await fetch('/bot_status');
             const data = await response.json();
-            document.getElementById('status').innerText = data.online ? "🟢 Online" : "🔴 Offline";
+            document.getElementById('status').innerText = data.online ? "Online" : "Offline";
             document.getElementById('server_count').innerText = data.server_count;
             document.getElementById('user_count').innerText = data.user_count;
 
@@ -17,7 +18,6 @@
             commandList.innerHTML = ""; // Clear the list
             data.commands.forEach(cmd => {
                 const li = document.createElement('li');
-                li.className = "text-teal-400";
                 li.innerText = cmd;
                 commandList.appendChild(li);
             });
@@ -26,64 +26,34 @@
         async function controlBot(action) {
             const response = await fetch('/bot_action', {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: action }),
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({action: action}),
             });
             const data = await response.json();
             alert(data.status);
         }
 
-        async function addCommand() {
-            const command = prompt("Enter the command:");
-            if (command) {
-                const response = await fetch('/add_command', {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ command: command }),
-                });
-                const data = await response.json();
-                alert(data.status);
-                fetchBotStatus();
-            }
-        }
-
         setInterval(fetchBotStatus, 5000); // Refresh stats every 5 seconds
     </script>
 </head>
-<body class="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-white font-sans">
-    <div class="container mx-auto py-10 px-5">
-        <h1 class="text-5xl font-extrabold mb-10 text-center text-indigo-500 drop-shadow-lg">
-            Discord Bot Dashboard
-        </h1>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Bot Status -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:scale-105">
-                <h2 class="text-3xl font-bold text-purple-400 mb-4">Bot Status</h2>
-                <p class="text-lg"><strong>Status:</strong> <span id="status" class="font-semibold">Loading...</span></p>
-                <p class="text-lg"><strong>Server Count:</strong> <span id="server_count" class="font-semibold">Loading...</span></p>
-                <p class="text-lg"><strong>User Count:</strong> <span id="user_count" class="font-semibold">Loading...</span></p>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto py-10">
+        <h1 class="text-4xl font-bold mb-5 text-center">Discord Bot Dashboard</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="bg-gray-800 p-5 rounded shadow">
+                <h2 class="text-2xl font-bold">Bot Status</h2>
+                <p class="mt-2"><strong>Status:</strong> <span id="status">Loading...</span></p>
+                <p><strong>Server Count:</strong> <span id="server_count">Loading...</span></p>
+                <p><strong>User Count:</strong> <span id="user_count">Loading...</span></p>
             </div>
-
-            <!-- Bot Actions -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:scale-105">
-                <h2 class="text-3xl font-bold text-green-400 mb-4">Bot Actions</h2>
-                <button onclick="controlBot('start')" class="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg mt-3 w-full font-semibold shadow-md">
-                    Start Bot
-                </button>
-                <button onclick="controlBot('stop')" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg mt-3 w-full font-semibold shadow-md">
-                    Stop Bot
-                </button>
+            <div class="bg-gray-800 p-5 rounded shadow">
+                <h2 class="text-2xl font-bold">Bot Actions</h2>
+                <button onclick="controlBot('start')" class="bg-green-500 text-white px-4 py-2 rounded mt-2">Start Bot</button>
+                <button onclick="controlBot('stop')" class="bg-red-500 text-white px-4 py-2 rounded mt-2">Stop Bot</button>
             </div>
-
-            <!-- Commands -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg transition duration-300 hover:scale-105">
-                <h2 class="text-3xl font-bold text-blue-400 mb-4">Commands</h2>
-                <ul id="commands" class="list-disc pl-5 mt-3 text-teal-400 text-lg">
-                    <li>Loading...</li>
-                </ul>
-                <button onclick="addCommand()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg mt-3 w-full font-semibold shadow-md">
-                    Add Command
-                </button>
+            <div class="bg-gray-800 p-5 rounded shadow">
+                <h2 class="text-2xl font-bold">Commands</h2>
+                <ul id="commands" class="list-disc pl-5 mt-2"></ul>
             </div>
         </div>
     </div>
