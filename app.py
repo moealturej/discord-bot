@@ -1,59 +1,65 @@
-from flask import Flask, render_template, jsonify, request
-import threading
+from flask import Flask, jsonify, request, render_template
+from threading import Thread
+from discord.ext.commands import Bot
 import os
-import time
-import subprocess
 
-# Simulated live bot stats
-bot_status = {"online": False, "server_count": 0, "user_count": 0, "commands": []}
-
-# Flask app setup
 app = Flask(__name__)
 
+# Placeholder for the bot instance
+bot_instance = None
+
+
 @app.route("/")
-def index():
+def dashboard():
     return render_template("index.html")
 
+
 @app.route("/bot_status")
-def get_bot_status():
-    """Provide live bot statistics."""
-    return jsonify(bot_status)
+def bot_status():
+    if bot_instance and bot_instance.is_ready():
+        return jsonify({
+            "online": True,
+            "server_count": len(bot_instance.guilds),
+            "user_count": sum(guild.member_count for guild in bot_instance.guilds),
+            "commands": [cmd.name for cmd in bot_instance.commands]
+        })
+    else:
+        return jsonify({
+            "online": False,
+            "server_count": 0,
+            "user_count": 0,
+            "commands": []
+        })
+
 
 @app.route("/bot_action", methods=["POST"])
 def bot_action():
-    """Control the bot (start/stop)."""
-    action = request.json.get("action")
-    if action == "start":
-        if not bot_status["online"]:
-            threading.Thread(target=start_bot, daemon=True).start()
-            return jsonify({"status": "Bot starting..."})
-        return jsonify({"status": "Bot already running."})
-    elif action == "stop":
-        bot_status["online"] = False
-        return jsonify({"status": "Bot stopped."})
-    return jsonify({"status": "Invalid action."}), 400
+    data = request.json
+    if data["action"] == "start":
+        start_bot()
+        return jsonify({"status": "Bot started"})
+    elif data["action"] == "stop":
+        stop_bot()
+        return jsonify({"status": "Bot stopped"})
+    else:
+        return jsonify({"status": "Invalid action"})
 
-@app.route("/add_command", methods=["POST"])
-def add_command():
-    """Add a custom command to the bot."""
-    command = request.json.get("command")
-    if command:
-        bot_status["commands"].append(command)
-        return jsonify({"status": "Command added."})
-    return jsonify({"status": "Invalid command."}), 400
 
 def start_bot():
-    """Simulate starting the bot process."""
-    bot_status["online"] = True
-    bot_status["server_count"] = 5
-    bot_status["user_count"] = 100
-    while bot_status["online"]:
-        # Simulate real-time updates
-        bot_status["server_count"] += 1  # Increment for demo purposes
-        bot_status["user_count"] += 10  # Increment for demo purposes
-        time.sleep(10)
+    global bot_instance
+    if bot_instance is None:
+        from bot import bot
+        bot_instance = bot
+        thread = Thread(target=bot.run, args=(os.getenv("DISCORD_BOT_TOKEN"),))
+        thread.start()
 
-# Run Flask app
+
+def stop_bot():
+    global bot_instance
+    if bot_instance:
+        bot_instance.close()
+        bot_instance = None
+
+
 if __name__ == "__main__":
-    threading.Thread(target=start_bot, daemon=True).start()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
