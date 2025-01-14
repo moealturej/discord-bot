@@ -3,59 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Bot Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <script>
-        async function fetchBotStatus() {
-            const response = await fetch('/bot_status');
-            const data = await response.json();
-            document.getElementById('status').innerText = data.online ? "Online" : "Offline";
-            document.getElementById('server_count').innerText = data.server_count;
-            document.getElementById('user_count').innerText = data.user_count;
-
-            const commandList = document.getElementById('commands');
-            commandList.innerHTML = ""; // Clear the list
-            data.commands.forEach(cmd => {
-                const li = document.createElement('li');
-                li.innerText = cmd;
-                commandList.appendChild(li);
-            });
+    <title>Bot Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
         }
-
-        async function controlBot(action) {
-            const response = await fetch('/bot_action', {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({action: action}),
-            });
-            const data = await response.json();
-            alert(data.status);
+        h1 {
+            color: #ff4081;
         }
-
-        setInterval(fetchBotStatus, 5000); // Refresh stats every 5 seconds
-    </script>
+        .status-box {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #333;
+        }
+        .status-box p {
+            font-size: 18px;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-white">
-    <div class="container mx-auto py-10">
-        <h1 class="text-4xl font-bold mb-5 text-center">Discord Bot Dashboard</h1>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div class="bg-gray-800 p-5 rounded shadow">
-                <h2 class="text-2xl font-bold">Bot Status</h2>
-                <p class="mt-2"><strong>Status:</strong> <span id="status">Loading...</span></p>
-                <p><strong>Server Count:</strong> <span id="server_count">Loading...</span></p>
-                <p><strong>User Count:</strong> <span id="user_count">Loading...</span></p>
-            </div>
-            <div class="bg-gray-800 p-5 rounded shadow">
-                <h2 class="text-2xl font-bold">Bot Actions</h2>
-                <button onclick="controlBot('start')" class="bg-green-500 text-white px-4 py-2 rounded mt-2">Start Bot</button>
-                <button onclick="controlBot('stop')" class="bg-red-500 text-white px-4 py-2 rounded mt-2">Stop Bot</button>
-            </div>
-            <div class="bg-gray-800 p-5 rounded shadow">
-                <h2 class="text-2xl font-bold">Commands</h2>
-                <ul id="commands" class="list-disc pl-5 mt-2"></ul>
-            </div>
-        </div>
+<body>
+    <h1>Bot Dashboard</h1>
+
+    <div class="status-box">
+        <p><strong>Bot Status:</strong> <span id="bot-status">Loading...</span></p>
     </div>
+    
+    <div class="status-box">
+        <p><strong>Uptime:</strong> <span id="bot-uptime">Loading...</span></p>
+    </div>
+    
+    <div class="status-box">
+        <p><strong>Server Count:</strong> <span id="server-count">Loading...</span></p>
+    </div>
+
+    <script type="text/javascript">
+        // Connect to the SocketIO server
+        const socket = io.connect('http://localhost:4000');  // Ensure this matches where your Flask app is running
+
+        // Listen for status update events from the bot
+        socket.on('status_update', function(data) {
+            document.getElementById('bot-status').textContent = data.bot_status;
+            document.getElementById('bot-uptime').textContent = data.uptime;
+            document.getElementById('server-count').textContent = data.server_count;
+        });
+
+        // Optional: Add a loading message to ensure it is waiting for the connection
+        socket.on('connect', function() {
+            console.log('Connected to SocketIO server');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from SocketIO server');
+        });
+    </script>
 </body>
 </html>
