@@ -133,6 +133,7 @@ async def on_ready():
     
     # Wait for a brief moment before attempting to change the avatar to avoid rate-limiting
     await asyncio.sleep(5)  # Adjust the delay if needed
+    await bot.tree.sync()
     
     try:
         # Set avatar from image URL
