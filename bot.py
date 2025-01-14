@@ -71,7 +71,7 @@ async def uptime(ctx):
 # To throttle updates to presence
 @tasks.loop(minutes=5)  # Update presence every 5 minutes
 async def update_presence():
-    status = random.choice([
+    status = random.choice([ 
         f"Serving {len(bot.guilds)} servers",
         "🎮 Playing games",
         "Helping {len(bot.users)} users",
@@ -84,14 +84,24 @@ async def update_presence():
 async def on_ready():
     print(f"Logged in as {bot.user}!")
     
-    # Set avatar from image URL
-    avatar_url = 'https://i.postimg.cc/G2wZHDrz/standard11.gif'  # Direct URL for the avatar
-    async with bot.http._HTTPClient__session.get(avatar_url) as response:
-        avatar_data = await response.read()
-        await bot.user.edit(avatar=avatar_data)
+    # Wait for a brief moment before attempting to change the avatar to avoid rate-limiting
+    await asyncio.sleep(5)  # Adjust the delay if needed
     
-    # Set the bot’s username
-    await bot.user.edit(username="moealturej's bot")
+    try:
+        # Set avatar from image URL
+        avatar_url = 'https://i.postimg.cc/G2wZHDrz/standard11.gif'  # Direct URL for the avatar
+        async with bot.http._HTTPClient__session.get(avatar_url) as response:
+            avatar_data = await response.read()
+            await bot.user.edit(avatar=avatar_data)
+        print("Avatar updated successfully.")
+    except discord.errors.HTTPException as e:
+        print(f"Error updating avatar: {e}")
+    
+    try:
+        # Set the bot’s username
+        await bot.user.edit(username="moealturej's bot")
+    except discord.errors.HTTPException as e:
+        print(f"Error updating username: {e}")
     
     # Set presence
     await bot.change_presence(activity=discord.Game(name=f"Serving {len(bot.guilds)} servers"))
@@ -106,13 +116,9 @@ async def on_ready():
     print(f"Bot is running with {len(bot.guilds)} moealturej services")
     update_presence.start()  # Start the presence update loop
 
-@bot.event
-async def on_disconnect():
-    print(f"Bot disconnected")
-
 # Function to keep the Flask app running alongside the bot
 def run_flask():
-    socketio.run(app, host='0.0.0.0', port=4000)
+    socketio.run(app, host='0.0.0.0', port=4000, use_reloader=False)
 
 # Run both the bot and Flask app in different threads
 def run_bot():
