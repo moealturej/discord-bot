@@ -10,7 +10,11 @@ import time
 import random
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # This loads the .env file
+token = os.getenv("DISCORD_TOKEN")
+
+if not token:
+    raise ValueError("DISCORD_TOKEN is not set in the environment or .env file.")
 
 # Set up intents for the bot
 intents = discord.Intents.default()
