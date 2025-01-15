@@ -4,69 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bot Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #2f3136;
-            color: #fff;
-            text-align: center;
-            padding: 20px;
-        }
-        h1 {
-            font-size: 36px;
-        }
-        .card {
-            background-color: #1e2024;
-            margin: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            display: inline-block;
-            width: 250px;
-            text-align: center;
-        }
-        .card h2 {
-            font-size: 24px;
-        }
-        .card p {
-            font-size: 18px;
-        }
-        .status {
-            font-size: 20px;
-            color: #43b581;
-        }
-        .offline {
-            color: #f04747;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <h1>Bot Dashboard</h1>
-
-    <div class="card">
-        <h2>Bot Status</h2>
-        <p class="status" id="botStatus">Loading...</p>
+    <div class="dashboard">
+        <h1>📊 Bot Dashboard</h1>
+        <div class="status">
+            <p><strong>Status:</strong> <span id="botStatus">{{ bot_status }}</span></p>
+            <p><strong>Uptime:</strong> <span id="uptime">{{ uptime }}</span></p>
+            <p><strong>Guilds Served:</strong> <span id="serverCount">{{ server_count }}</span></p>
+        </div>
+        <footer>Made by <strong>moealturej</strong></footer>
     </div>
-
-    <div class="card">
-        <h2>Uptime</h2>
-        <p id="uptime">Loading...</p>
-    </div>
-
-    <div class="card">
-        <h2>Server Count</h2>
-        <p id="serverCount">Loading...</p>
-    </div>
-
-    <script>
-        const socket = io.connect('http://localhost:4000');
-        
-        socket.on('status_update', function(data) {
-            document.getElementById("botStatus").textContent = data.bot_status;
-            document.getElementById("uptime").textContent = data.uptime;
-            document.getElementById("serverCount").textContent = data.server_count + " servers";
-        });
-    </script>
 </body>
 </html>
