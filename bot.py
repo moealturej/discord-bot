@@ -3,52 +3,62 @@ from discord.ext import commands, tasks
 import os
 import datetime
 import asyncio
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from threading import Thread
 import time
-import requests
 import random
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+load_dotenv()  # Load environment variables
 TOKEN = os.getenv("DISCORD_TOKEN")
+
 if not TOKEN:
     raise ValueError("DISCORD_TOKEN is not set in the environment or .env file.")
 
-# Intents and bot setup
+# Intents
 intents = discord.Intents.default()
 intents.message_content = True
+intents.guilds = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-# Uptime tracking
+# Variables for uptime and cache
 start_time = datetime.datetime.now()
+server_count_cache = {'count': 0, 'last_updated': time.time()}
 
 # Flask app setup
 app = Flask(__name__, template_folder="templates", static_folder="static")
 socketio = SocketIO(app, async_mode='eventlet')
 
+
 # --- Flask Dashboard ---
 def get_server_count():
-    """Return the number of servers the bot is in."""
-    return len(bot.guilds)
+    """Return server count with caching."""
+    current_time = time.time()
+    if current_time - server_count_cache['last_updated'] > 30:
+        server_count_cache['count'] = len(bot.guilds)
+        server_count_cache['last_updated'] = current_time
+    return server_count_cache['count']
+
 
 def get_bot_status():
-    """Return the bot's online status."""
-    return "🟢 Online" if bot.is_ready() else "🔴 Offline"
+    """Return bot's status."""
+    return "Online" if bot.is_ready() else "Offline"
+
 
 def get_uptime():
-    """Return the bot's uptime."""
+    """Return bot's uptime."""
     return str(datetime.datetime.now() - start_time)
+
 
 @app.route('/')
 def index():
     """Render the dashboard."""
-    return render_template('dashboard.html', 
-                           bot_status=get_bot_status(), 
-                           uptime=get_uptime(), 
-                           server_count=get_server_count())
+    bot_status = get_bot_status()
+    uptime = get_uptime()
+    server_count = get_server_count()
+    return render_template('dashboard.html', bot_status=bot_status, uptime=uptime, server_count=server_count)
+
 
 @socketio.on('connect')
 def on_connect():
@@ -59,158 +69,45 @@ def on_connect():
         'server_count': get_server_count()
     })
 
-# --- Discord Bot Events ---
+
+# --- Discord Bot Commands ---
 @bot.event
 async def on_ready():
-    """Triggered when the bot is ready."""
-    print(f"✨ Logged in as {bot.user}! ✨")
+    """Bot is ready event."""
+    print(f"Logged in as {bot.user}!")
 
-    # Update avatar and presence
+    # Update bot's avatar and presence
     try:
         avatar_url = 'https://i.postimg.cc/G2wZHDrz/standard11.gif'
         async with bot.http._HTTPClient__session.get(avatar_url) as response:
             avatar_data = await response.read()
             await bot.user.edit(avatar=avatar_data)
-        print("🎨 Avatar updated successfully.")
+        print("Avatar updated successfully.")
     except discord.errors.HTTPException as e:
         print(f"Error updating avatar: {e}")
 
-    await bot.change_presence(activity=discord.Activity(
-        type=discord.ActivityType.listening,
-        name="Type .commands for help 💜"
-    ))
-    update_presence.start()
-
-@tasks.loop(minutes=5)
-async def update_presence():
-    """Cycle through different statuses."""
-    statuses = [
-        "Managing your guilds! 🌌",
-        "Keeping things stylish 💜",
-        "Type .commands for fun & help!",
-        f"Serving {len(bot.guilds)} servers!",
-        "Let's make magic happen! ✨",
-    ]
-    await bot.change_presence(activity=discord.Game(name=random.choice(statuses)))
-
-# Store custom embeds
-custom_embeds = {}
-
-@app.route('/create_embed', methods=['POST'])
-def create_embed():
-    """Create a custom embed from the dashboard."""
-    title = request.form.get('title')
-    description = request.form.get('description')
-    color = int(request.form.get('color', '0x3498db'), 16)  # Default color if not specified
-    image_url = request.form.get('image_url')
-    footer_text = request.form.get('footer_text')
-    footer_icon = request.form.get('footer_icon')
-    author_name = request.form.get('author_name')
-    author_icon = request.form.get('author_icon')
-    author_url = request.form.get('author_url')
-    timestamp = bool(request.form.get('timestamp', False))
-
-    # Create a new embed
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=color
-    )
-
-    # Optionally add an image or thumbnail
-    if image_url:
-        embed.set_image(url=image_url)
-    
-    # Add footer if provided
-    if footer_text:
-        embed.set_footer(text=footer_text, icon_url=footer_icon)
-
-    # Add author if provided
-    if author_name:
-        embed.set_author(name=author_name, icon_url=author_icon, url=author_url)
-
-    # Add timestamp if selected
-    if timestamp:
-        embed.timestamp = discord.utils.utcnow()
-
-    # Generate unique ID for the embed
-    embed_id = len(custom_embeds) + 1
-    custom_embeds[embed_id] = embed
-
-    return render_template('dashboard.html', embed_created=True, embed_id=embed_id)
+    await bot.change_presence(activity=discord.Game(name="Use .help for commands"))
+    print(f"Bot is serving {len(bot.guilds)} guilds!")
+    update_presence.start()  # Start the presence update task
 
 
-@app.route('/get_embed/<int:embed_id>')
-def get_embed(embed_id):
-    """Fetch a custom embed."""
-    embed = custom_embeds.get(embed_id)
-    if not embed:
-        return "Embed not found", 404
-
-    # Convert the embed object to a dictionary to send as JSON
-    embed_data = {
-        'title': embed.title,
-        'description': embed.description,
-        'color': embed.color.value,
-        'image_url': embed.image.url if embed.image else None,
-        'footer_text': embed.footer.text if embed.footer else None,
-        'footer_icon': embed.footer.icon_url if embed.footer else None,
-        'author_name': embed.author.name if embed.author else None,
-        'author_icon': embed.author.icon_url if embed.author else None,
-        'author_url': embed.author.url if embed.author else None,
-        'timestamp': embed.timestamp.isoformat() if embed.timestamp else None
-    }
-
-    return jsonify(embed_data)
-
-# --- Commands ---
-@bot.command(name="ping")
-async def ping(ctx):
-    """Ping command."""
-    await ctx.send("🏓 Pong! (Latency: {:.2f}ms)".format(bot.latency * 1000))
-
-@bot.command(name="uptime")
-async def uptime(ctx):
-    """Show bot uptime."""
-    delta = datetime.datetime.now() - start_time
-    await ctx.send(f"⏱ Uptime: {delta}")
-
-@bot.command(name="commands")
-async def commands(ctx):
-    """List all commands."""
-    embed = discord.Embed(
-        title="📜 Command List",
-        description="Here are the commands you can use:",
-        color=discord.Color.purple()
-    )
-    embed.add_field(name="🏓 .ping", value="Check the bot's response time.", inline=False)
-    embed.add_field(name="⏱ .uptime", value="See how long the bot has been running.", inline=False)
-    embed.add_field(name="🔒 .verify", value="Get a verification code in DMs.", inline=False)
-    embed.add_field(name="🎟️ .create_ticket [reason]", value="Create a support ticket.", inline=False)
-    embed.add_field(name="🎫 .close_ticket", value="Close the current ticket.", inline=False)
-    embed.add_field(name="📌 .sticky [content]", value="Set a sticky message in the channel.", inline=False)
-    embed.add_field(name="🔓 .unsticky", value="Remove the sticky message.", inline=False)
-    embed.add_field(name="🖼 .send_embed [id]", value="Send a custom embed (via dashboard).", inline=False)
-    embed.set_footer(text="Bot by moealturej")
-    embed.set_thumbnail(url="https://i.postimg.cc/G2wZHDrz/standard11.gif")
-    await ctx.send(embed=embed)
-
+# Verification Command
 @bot.command(name="verify")
 async def verify(ctx):
     """Send a verification code to the user."""
     verification_code = str(random.randint(1000, 9999))
     await ctx.author.send(f"🔒 Your verification code is: `{verification_code}`\nPlease reply with this code in this DM to verify.")
-
+    
     def check(m):
-        return m.content == verification_code and m.channel == ctx.author.dm_channel and m.author == ctx.author
-
+        return m.content == verification_code and m.channel == ctx.channel and m.author == ctx.author
+    
     try:
         msg = await bot.wait_for('message', check=check, timeout=60.0)
         await ctx.author.send("✅ You have been verified!")
     except asyncio.TimeoutError:
         await ctx.author.send("❌ Verification timed out. Please try again.")
 
-# --- Ticket System ---
+# Ticket System
 ticket_channels = {}
 
 @bot.command(name="create_ticket")
@@ -221,91 +118,122 @@ async def create_ticket(ctx, *, reason="No reason provided"):
         await ctx.send("❌ You already have an open ticket.")
         return
 
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
     category = discord.utils.get(guild.categories, name="Tickets")
     if not category:
         category = await guild.create_category("Tickets")
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(read_messages=False),
-        ctx.author: discord.PermissionOverwrite(read_messages=True)
-    }
+
     ticket_channel = await guild.create_text_channel(f"ticket-{ctx.author.name}", overwrites=overwrites, category=category)
     ticket_channels[ctx.author.id] = ticket_channel.id
+
     await ticket_channel.send(f"🎟️ Ticket created by {ctx.author.mention}\nReason: {reason}")
+    await ctx.send(f"✅ Ticket created: {ticket_channel.mention}")
 
 @bot.command(name="close_ticket")
 async def close_ticket(ctx):
-    """Close the ticket channel."""
+    """Close the current ticket."""
     if ctx.channel.id not in ticket_channels.values():
         await ctx.send("❌ This is not a ticket channel.")
         return
-    await ctx.channel.delete()
-    del ticket_channels[ctx.author.id]
 
-# --- Sticky Messages ---
+    user_id = list(ticket_channels.keys())[list(ticket_channels.values()).index(ctx.channel.id)]
+    await ctx.channel.delete()
+    del ticket_channels[user_id]
+    await ctx.send(f"✅ Ticket for {ctx.author.mention} has been closed.", delete_after=5)
+
+# Sticky Messages
 sticky_messages = {}
+
+@bot.event
+async def on_message(message):
+    if message.channel.id in sticky_messages and not message.author.bot:
+        sticky_message = sticky_messages[message.channel.id]
+        await sticky_message.delete()
+        sticky_messages[message.channel.id] = await message.channel.send(sticky_message.content)
+    await bot.process_commands(message)
 
 @bot.command(name="sticky")
 async def sticky(ctx, *, content):
     """Set a sticky message."""
     if ctx.channel.id in sticky_messages:
-        # If there's an existing sticky message, delete it first
-        await sticky_messages[ctx.channel.id].delete()
-    
-    # Send the new sticky message
+        await ctx.send("❌ This channel already has a sticky message.")
+        return
+
     sticky_message = await ctx.send(content)
-    
-    # Update the sticky message reference
     sticky_messages[ctx.channel.id] = sticky_message
     await ctx.send("✅ Sticky message set.")
 
 @bot.command(name="unsticky")
 async def unsticky(ctx):
-    """Remove sticky message."""
-    if ctx.channel.id in sticky_messages:
-        await sticky_messages[ctx.channel.id].delete()
-        del sticky_messages[ctx.channel.id]
+    """Remove the sticky message from the channel."""
+    if ctx.channel.id not in sticky_messages:
+        await ctx.send("❌ No sticky message in this channel.")
+        return
+
+    await sticky_messages[ctx.channel.id].delete()
+    del sticky_messages[ctx.channel.id]
+    await ctx.send("✅ Sticky message removed.")
+
+# Custom Embed System
+custom_embeds = {}
+
+@bot.command(name="create_embed")
+async def create_embed(ctx, title: str, description: str, color: str = '#3498db', footer: str = '', thumbnail_url: str = ''):
+    """Create and store a custom embed."""
+    try:
+        color = int(color.lstrip('#'), 16)
+    except ValueError:
+        await ctx.send("❌ Invalid color format. Use a valid hex color code.")
+        return
+
+    embed = discord.Embed(title=title, description=description, color=color)
+    if footer:
+        embed.set_footer(text=footer)
+    if thumbnail_url:
+        embed.set_thumbnail(url=thumbnail_url)
+
+    embed_id = len(custom_embeds) + 1  # Generate a new ID for the embed
+    custom_embeds[embed_id] = embed.to_dict()
+    await ctx.send(f"✅ Embed created with ID: {embed_id}")
+
 
 @bot.command(name="send_embed")
 async def send_embed(ctx, embed_id: int):
-    """Send a fully customizable embed stored in the dashboard."""
-    try:
-        response = requests.get(f"http://localhost:4000/get_embed/{embed_id}")
-        embed_data = response.json()
-        
-        embed = discord.Embed(
-            title=embed_data['title'],
-            description=embed_data['description'],
-            color=embed_data['color']
-        )
+    """Send a custom embed stored by the dashboard."""
+    if embed_id not in custom_embeds:
+        await ctx.send("❌ No embed found with that ID.")
+        return
 
-        # Add image, footer, author, and timestamp if provided
-        if embed_data['image_url']:
-            embed.set_image(url=embed_data['image_url'])
-        
-        if embed_data['footer_text']:
-            embed.set_footer(text=embed_data['footer_text'], icon_url=embed_data['footer_icon'])
-        
-        if embed_data['author_name']:
-            embed.set_author(
-                name=embed_data['author_name'],
-                icon_url=embed_data['author_icon'],
-                url=embed_data['author_url']
-            )
-        
-        if embed_data['timestamp']:
-            embed.timestamp = discord.utils.parse_time(embed_data['timestamp'])
-        
-        await ctx.send(embed=embed)
-    except requests.exceptions.RequestException as e:
-        await ctx.send("❌ Failed to retrieve the embed.")
-        print(f"Error retrieving embed: {e}")
+    embed_data = custom_embeds[embed_id]
+    embed = discord.Embed.from_dict(embed_data)
+    await ctx.send(embed=embed)
+
+
+@tasks.loop(minutes=5)
+async def update_presence():
+    """Update bot's presence every 5 minutes."""
+    status = random.choice([
+        f"Use .commands to explore features!",
+        "Type .commands for help and tips!",
+        "Check out .commands for all commands!",
+        f"Managing {len(bot.guilds)} guilds—use .commands!",
+        f"Helping {len(bot.users)} users—type .commands!",
+        "Looking for help? Try .commands!",
+        "Discover new features with .commands!",
+    ])
+    await bot.change_presence(activity=discord.Game(name=status))
+
 
 # --- Flask App Thread ---
 def run_flask():
-    """Run Flask app."""
-    socketio.run(app, host='0.0.0.0', port=4000)
+    socketio.run(app, host='0.0.0.0', port=4000, use_reloader=False)
 
-# Run Flask and Discord bot
-if __name__ == "__main__":
-    Thread(target=run_flask).start()
+
+# --- Run Bot ---
+if __name__ == '__main__':
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
     bot.run(TOKEN)
