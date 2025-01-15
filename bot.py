@@ -247,8 +247,16 @@ sticky_messages = {}
 @bot.command(name="sticky")
 async def sticky(ctx, *, content):
     """Set a sticky message."""
+    if ctx.channel.id in sticky_messages:
+        # If there's an existing sticky message, delete it first
+        await sticky_messages[ctx.channel.id].delete()
+    
+    # Send the new sticky message
     sticky_message = await ctx.send(content)
+    
+    # Update the sticky message reference
     sticky_messages[ctx.channel.id] = sticky_message
+    await ctx.send("✅ Sticky message set.")
 
 @bot.command(name="unsticky")
 async def unsticky(ctx):
