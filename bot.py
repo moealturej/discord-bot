@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 import os
 import datetime
 import asyncio
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from threading import Thread
 import time
@@ -92,6 +92,76 @@ async def update_presence():
     ]
     await bot.change_presence(activity=discord.Game(name=random.choice(statuses)))
 
+# Store custom embeds
+custom_embeds = {}
+
+@app.route('/create_embed', methods=['POST'])
+def create_embed():
+    """Create a custom embed from the dashboard."""
+    title = request.form.get('title')
+    description = request.form.get('description')
+    color = int(request.form.get('color', '0x3498db'), 16)  # Default color if not specified
+    image_url = request.form.get('image_url')
+    footer_text = request.form.get('footer_text')
+    footer_icon = request.form.get('footer_icon')
+    author_name = request.form.get('author_name')
+    author_icon = request.form.get('author_icon')
+    author_url = request.form.get('author_url')
+    timestamp = bool(request.form.get('timestamp', False))
+
+    # Create a new embed
+    embed = discord.Embed(
+        title=title,
+        description=description,
+        color=color
+    )
+
+    # Optionally add an image or thumbnail
+    if image_url:
+        embed.set_image(url=image_url)
+    
+    # Add footer if provided
+    if footer_text:
+        embed.set_footer(text=footer_text, icon_url=footer_icon)
+
+    # Add author if provided
+    if author_name:
+        embed.set_author(name=author_name, icon_url=author_icon, url=author_url)
+
+    # Add timestamp if selected
+    if timestamp:
+        embed.timestamp = discord.utils.utcnow()
+
+    # Generate unique ID for the embed
+    embed_id = len(custom_embeds) + 1
+    custom_embeds[embed_id] = embed
+
+    return render_template('dashboard.html', embed_created=True, embed_id=embed_id)
+
+
+@app.route('/get_embed/<int:embed_id>')
+def get_embed(embed_id):
+    """Fetch a custom embed."""
+    embed = custom_embeds.get(embed_id)
+    if not embed:
+        return "Embed not found", 404
+
+    # Convert the embed object to a dictionary to send as JSON
+    embed_data = {
+        'title': embed.title,
+        'description': embed.description,
+        'color': embed.color.value,
+        'image_url': embed.image.url if embed.image else None,
+        'footer_text': embed.footer.text if embed.footer else None,
+        'footer_icon': embed.footer.icon_url if embed.footer else None,
+        'author_name': embed.author.name if embed.author else None,
+        'author_icon': embed.author.icon_url if embed.author else None,
+        'author_url': embed.author.url if embed.author else None,
+        'timestamp': embed.timestamp.isoformat() if embed.timestamp else None
+    }
+
+    return jsonify(embed_data)
+
 # --- Commands ---
 @bot.command(name="ping")
 async def ping(ctx):
@@ -128,16 +198,16 @@ async def commands(ctx):
 async def verify(ctx):
     """Send a verification code to the user."""
     verification_code = str(random.randint(1000, 9999))
-    await ctx.author.send(f"🔒 Your verification code is `{verification_code}`.\nReply here to verify.")
-    
+    await ctx.author.send(f"🔒 Your verification code is: `{verification_code}`\nPlease reply with this code in this DM to verify.")
+
     def check(m):
-        return m.content == verification_code and m.channel == ctx.channel and m.author == ctx.author
-    
+        return m.content == verification_code and m.channel == ctx.author.dm_channel and m.author == ctx.author
+
     try:
-        await bot.wait_for('message', check=check, timeout=60.0)
-        await ctx.author.send("✅ You are now verified!")
+        msg = await bot.wait_for('message', check=check, timeout=60.0)
+        await ctx.author.send("✅ You have been verified!")
     except asyncio.TimeoutError:
-        await ctx.author.send("❌ Verification timed out.")
+        await ctx.author.send("❌ Verification timed out. Please try again.")
 
 # --- Ticket System ---
 ticket_channels = {}
