@@ -9,11 +9,57 @@
 <body>
     <div class="dashboard">
         <h1>📊 Bot Dashboard</h1>
+        
+        <!-- Status Section -->
         <div class="status">
             <p><strong>Status:</strong> <span id="botStatus">{{ bot_status }}</span></p>
             <p><strong>Uptime:</strong> <span id="uptime">{{ uptime }}</span></p>
             <p><strong>Guilds Served:</strong> <span id="serverCount">{{ server_count }}</span></p>
         </div>
+
+        <!-- Embed Creation Section -->
+        <div class="embed-creation">
+            <h2>Create Custom Embed</h2>
+            <form method="POST" action="/create_embed">
+                <label for="title">Embed Title:</label>
+                <input type="text" id="title" name="title" required><br><br>
+
+                <label for="description">Embed Description:</label>
+                <textarea id="description" name="description" required></textarea><br><br>
+
+                <label for="color">Embed Color (Hex):</label>
+                <input type="text" id="color" name="color" value="#3498db"><br><br>
+
+                <label for="image_url">Embed Image URL:</label>
+                <input type="text" id="image_url" name="image_url"><br><br>
+
+                <label for="footer_text">Footer Text:</label>
+                <input type="text" id="footer_text" name="footer_text"><br><br>
+
+                <label for="footer_icon">Footer Icon URL:</label>
+                <input type="text" id="footer_icon" name="footer_icon"><br><br>
+
+                <label for="author_name">Author Name:</label>
+                <input type="text" id="author_name" name="author_name"><br><br>
+
+                <label for="author_icon">Author Icon URL:</label>
+                <input type="text" id="author_icon" name="author_icon"><br><br>
+
+                <label for="author_url">Author URL:</label>
+                <input type="text" id="author_url" name="author_url"><br><br>
+
+                <label for="timestamp">Include Timestamp:</label>
+                <input type="checkbox" id="timestamp" name="timestamp"><br><br>
+
+                <button type="submit">Create Embed</button>
+            </form>
+
+            {% if embed_created %}
+                <p class="embed-success">Embed created successfully! Embed ID: {{ embed_id }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
         <footer>Made by <strong>moealturej</strong></footer>
     </div>
 </body>
