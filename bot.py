@@ -117,15 +117,15 @@ async def commands(ctx):
     embed = discord.Embed(
         title="Bot Commands",
         description="Here are the available commands for this bot:",
-        color=discord.Color.purple()
+        color=discord.Color.pink()
     )
 
-    embed.add_field(name=".ping", value="Responds with 'Pong!'", inline=False)
-    embed.add_field(name=".uptime", value="Displays the bot's uptime.", inline=False)
-    embed.add_field(name=".purge", value="Deletes a specified number of messages.", inline=False)
-    embed.add_field(name=".verify", value="Sends a verification code to verify your identity.", inline=False)
+    embed.add_field(name="/ping", value="Responds with 'Pong!'", inline=False)
+    embed.add_field(name="/uptime", value="Displays the bot's uptime.", inline=False)
+    embed.add_field(name="/purge", value="Deletes a specified number of messages.", inline=False)
+    embed.add_field(name="/verify", value="Sends a verification code to verify your identity.", inline=False)
 
-    embed.set_footer(text="Use .help to get the list of commands anytime!")
+    embed.set_footer(text="Use /commands to get the list of commands anytime!")
     embed.set_thumbnail(url="https://i.postimg.cc/G2wZHDrz/standard11.gif")  # Your emblem here
     await ctx.send(embed=embed)
 
