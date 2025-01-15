@@ -117,9 +117,9 @@ async def purge(ctx, amount: int):
     await ctx.send(f"✅ Deleted {len(deleted)} messages.", delete_after=5)
 
 
-@bot.command(name="help")
-async def help_command(ctx):
-    """Send a help message."""
+@bot.command(name="commands")
+async def commands(ctx):
+    """Custom help command."""
     embed = discord.Embed(
         title="📜 Command List",
         description="Here are the commands you can use:",
@@ -128,7 +128,7 @@ async def help_command(ctx):
     embed.add_field(name=".ping", value="Responds with 'Pong!'", inline=False)
     embed.add_field(name=".uptime", value="Shows the bot's uptime.", inline=False)
     embed.add_field(name=".purge [amount]", value="Deletes messages (Admin only).", inline=False)
-    embed.add_field(name=".help", value="Shows this help message.", inline=False)
+    embed.add_field(name=".commands", value="Shows this command list.", inline=False)
     embed.set_footer(text="Bot by moealturej")
     embed.set_thumbnail(url="https://i.postimg.cc/G2wZHDrz/standard11.gif")
     await ctx.send(embed=embed)
