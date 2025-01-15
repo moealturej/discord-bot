@@ -19,7 +19,7 @@ if not token:
 # Set up intents for the bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=".", intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Store bot uptime
 start_time = datetime.datetime.now()
