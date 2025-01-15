@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from threading import Thread
 import time
+import requests
 import random
 from dotenv import load_dotenv
 
@@ -255,6 +256,41 @@ async def unsticky(ctx):
     if ctx.channel.id in sticky_messages:
         await sticky_messages[ctx.channel.id].delete()
         del sticky_messages[ctx.channel.id]
+
+@bot.command(name="send_embed")
+async def send_embed(ctx, embed_id: int):
+    """Send a fully customizable embed stored in the dashboard."""
+    try:
+        response = requests.get(f"http://localhost:4000/get_embed/{embed_id}")
+        embed_data = response.json()
+        
+        embed = discord.Embed(
+            title=embed_data['title'],
+            description=embed_data['description'],
+            color=embed_data['color']
+        )
+
+        # Add image, footer, author, and timestamp if provided
+        if embed_data['image_url']:
+            embed.set_image(url=embed_data['image_url'])
+        
+        if embed_data['footer_text']:
+            embed.set_footer(text=embed_data['footer_text'], icon_url=embed_data['footer_icon'])
+        
+        if embed_data['author_name']:
+            embed.set_author(
+                name=embed_data['author_name'],
+                icon_url=embed_data['author_icon'],
+                url=embed_data['author_url']
+            )
+        
+        if embed_data['timestamp']:
+            embed.timestamp = discord.utils.parse_time(embed_data['timestamp'])
+        
+        await ctx.send(embed=embed)
+    except requests.exceptions.RequestException as e:
+        await ctx.send("❌ Failed to retrieve the embed.")
+        print(f"Error retrieving embed: {e}")
 
 # --- Flask App Thread ---
 def run_flask():
