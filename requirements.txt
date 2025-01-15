@@ -6,3 +6,4 @@ flask-socketio
 Jinja2
 python-dotenv
 gunicorn
+requests
